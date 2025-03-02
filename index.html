@@ -76,10 +76,10 @@
         </div>
     </div>
 
-   <script>
+ <script>
     // Konfigurasi
-    const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyQ2AyV5egQjIw1tdFSHfJ-FqVM-FOvBW-jLvTub3ODuHCiw_BRW0HvI1AVEwe8gzcCwg/exec';
-    const SUBMIT_URL = 'https://script.google.com/macros/s/AKfycbyQ2AyV5egQjIw1tdFSHfJ-FqVM-FOvBW-jLvTub3ODuHCiw_BRW0HvI1AVEwe8gzcCwg/exec';
+    const SHEET_URL = 'URL_APPS_SCRIPT_GET';
+    const SUBMIT_URL = 'URL_APPS_SCRIPT_POST';
     let allItems = [];
 
     // ==================== HELPER FUNCTIONS ====================
@@ -139,12 +139,7 @@
     function showSuggestions(items) {
         const suggestionsBox = document.getElementById('suggestions');
         suggestionsBox.innerHTML = '';
-        
-        if(items.length === 0) {
-            suggestionsBox.innerHTML = '<div class="text-muted p-2">Tidak ada hasil ditemukan</div>';
-            suggestionsBox.style.display = 'block';
-            return;
-        }
+        suggestionsBox.style.display = 'block';
 
         items.slice(0, 5).forEach(item => {
             const div = document.createElement('div');
@@ -160,7 +155,6 @@
             div.addEventListener('click', () => selectItem(item));
             suggestionsBox.appendChild(div);
         });
-        suggestionsBox.style.display = 'block';
     }
 
     function setupSearch() {
@@ -169,15 +163,10 @@
 
         searchInput.addEventListener('input', function(e) {
             const query = e.target.value.toLowerCase().trim();
-            if(!query) {
-                suggestionsBox.style.display = 'none';
-                return;
-            }
-            
             const filtered = allItems.filter(item => {
-                const plu = item.plu?.toLowerCase() || '';
-                const barcode = item.barcode?.toLowerCase() || '';
-                const desc = item.description?.toLowerCase() || '';
+                const plu = item.plu.toLowerCase();
+                const barcode = item.barcode.toLowerCase();
+                const desc = item.description.toLowerCase();
                 
                 return plu.includes(query) ||
                     barcode.includes(query) ||
@@ -219,9 +208,6 @@
                     </div>
                 </div>
             `).join('');
-
-            // Update tombol submit
-            document.getElementById('submitBtn').style.display = transactions.length ? 'block' : 'none';
         } catch (error) {
             console.error('Error updating items:', error);
         }
@@ -230,77 +216,89 @@
     // ==================== EVENT HANDLERS ====================
     window.saveItem = function(item) {
         try {
-            const qty = parseInt(document.getElementById('qtyInput').value) || 1;
-            const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
-            
-            const newTransaction = {
-                ...item,
-                qty: qty,
-                timestamp: new Date().toISOString()
-            };
-            
-            transactions.push(newTransaction);
-            localStorage.setItem('transactions', JSON.stringify(transactions));
-            
-            updateSelectedItems();
-            document.getElementById('editSection').style.display = 'none';
-        } catch (error) {
-            console.error('Error saving item:', error);
-            alert('Gagal menyimpan item: ' + error.message);
-        }
-    };
-
-    window.deleteItem = function(index) {
-        try {
-            const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
-            transactions.splice(index, 1);
-            localStorage.setItem('transactions', JSON.stringify(transactions));
-            updateSelectedItems();
-        } catch (error) {
-            console.error('Error deleting item:', error);
-            alert('Gagal menghapus item: ' + error.message);
-        }
-    };
-
-    window.submitData = async function() {
-        try {
-            const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
-            
-            if(transactions.length === 0) {
-                alert('Tidak ada data untuk dikirim');
+            const qty = document.getElementById('qtyInput').value;
+            if(!qty || qty < 1) {
+                alert('Masukkan jumlah yang valid');
                 return;
             }
 
-            const response = await fetch(SUBMIT_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'text/plain; charset=utf-8',
-                },
-                body: JSON.stringify(transactions)
-            });
+            const transaction = {
+                ...item,
+                qty: parseInt(qty),
+                timestamp: new Date().toISOString()
+            };
 
-            const resultText = await response.text();
-            let result;
-            
-            try {
-                result = JSON.parse(resultText);
-            } catch {
-                throw new Error(resultText || 'Unknown error');
-            }
+            const existing = JSON.parse(localStorage.getItem('transactions') || '[]');
+            existing.push(transaction);
+            localStorage.setItem('transactions', JSON.stringify(existing));
 
-            if(result.status === "success") {
-                localStorage.removeItem('transactions');
-                updateSelectedItems();
-                alert('Data berhasil dikirim!');
-            } else {
-                throw new Error(result.message || 'Gagal mengirim data');
-            }
-            
+            document.getElementById('selectedItemsSection').style.display = 'block';
+            updateSelectedItems();
+            document.getElementById('editSection').style.display = 'none';
+            document.getElementById('submitBtn').style.display = 'block';
         } catch (error) {
-            console.error('Submit error:', error);
-            alert('Terjadi kesalahan: ' + error.message);
+            console.error('Error saving item:', error);
+            alert('Gagal menyimpan data!');
         }
-    };
+    }
+
+    window.deleteItem = function(index) {
+        const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
+        transactions.splice(index, 1);
+        localStorage.setItem('transactions', JSON.stringify(transactions));
+        
+        if(transactions.length === 0) {
+            document.getElementById('selectedItemsSection').style.display = 'none';
+            document.getElementById('submitBtn').style.display = 'none';
+        }
+        
+        updateSelectedItems();
+    }
+
+    window.submitData = async function() {
+  try {
+    const transactions = JSON.parse(localStorage.getItem('transactions') || "[]");
+
+    if(transactions.length === 0) {
+      alert('Tidak ada data untuk dikirim');
+      return;
+    }
+
+    const response = await fetch(SUBMIT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8', // Google Apps Script membutuhkan ini
+      },
+      body: JSON.stringify(transactions)
+    });
+
+    // Handle response text karena GAS return text bukan JSON
+    const resultText = await response.text();
+    let result;
+    
+    try {
+      result = JSON.parse(resultText);
+    } catch {
+      throw new Error(resultText || 'Unknown error');
+    }
+
+    if(result.status === "success") {
+      localStorage.removeItem('transactions');
+      updateSelectedItems();
+      document.getElementById('submitBtn').style.display = 'none';
+      alert('Data berhasil dikirim!');
+    } else {
+      throw new Error(result.message || 'Gagal mengirim data');
+    }
+    
+  } catch (error) {
+    console.error('Submit error:', error);
+    alert('Terjadi kesalahan: ' + error.message);
+    
+    // Log detail error untuk debugging
+    console.log('Transactions data:', JSON.parse(localStorage.getItem('transactions')));
+  }
+}
 
     // ==================== INITIALIZATION ====================
     window.addEventListener('DOMContentLoaded', async () => {
@@ -327,13 +325,15 @@
             document.getElementById('spinner').style.display = 'none';
             document.getElementById('main-content').style.display = 'block';
             setupSearch();
-            updateSelectedItems(); // Initial load untuk mengecek transaksi yang ada
         } catch (error) {
             console.error('Error loading data:', error);
             alert('Gagal memuat data! ' + error.message);
             document.getElementById('spinner').style.display = 'none';
         }
     });
+
+    // ==================== GLOBAL SCOPE ASSIGNMENT ====================
+    window.selectItem = selectItem;
 </script>
        
     
