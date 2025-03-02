@@ -42,15 +42,15 @@
         /* Search Section */
         .search-container {
             max-width: 800px;
-            margin: 2rem auto;
+            margin: 1rem auto;
             position: relative;
         }
 
         #searchInput {
             height: 60px;
             border-radius: 15px;
-            padding: 1.5rem;
-            font-size: 1.1rem;
+            padding: 1rem;
+            font-size: 1rem;
             border: 2px solid #e0e0ff;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             background: white;
@@ -70,7 +70,7 @@
         }
 
         .suggestion-item {
-            padding: 1rem 1.5rem;
+            padding: 1rem 1rem;
             transition: all 0.2s ease;
             border-bottom: 1px solid #f5f5ff;
         }
@@ -89,6 +89,7 @@
             border: none;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             transition: all 0.3s ease;
+            gap: 1rem;
         }
 
         .item-card:hover {
@@ -113,8 +114,8 @@
             align-items: center;
             justify-content: center;
             gap: 0.8rem;
-            padding: 1.25rem;
-            font-size: 1.1rem;
+            padding: 1rem;
+            font-size: 1rem;
             border-radius: 12px;
             background: linear-gradient(135deg, #4361ee 0%, #3f37c9 100%);
             color: white;
@@ -150,99 +151,7 @@
             animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* Responsive Addons */
-        @media (max-width: 768px) {
-
-            /* Search Input Mobile */
-            #searchInput {
-                font-size: 1rem;
-                padding: 1rem;
-                height: 52px;
-            }
-
-            /* Suggestion Box Mobile */
-            .suggestion-box {
-                max-height: 60vh;
-                border-radius: 8px;
-            }
-
-            .suggestion-item {
-                padding: 12px;
-                font-size: 0.9rem;
-            }
-
-            /* Edit Card Mobile */
-            .edit-card .input-group {
-                flex-direction: column;
-                gap: 12px;
-            }
-
-            .edit-card button {
-                width: 100%;
-            }
-
-            /* Selected Items Mobile */
-            .item-card {
-                margin-bottom: 12px;
-                gap: 20px; /* Atur jarak antar card */
-            }
-
-            .item-card .card-title {
-                font-size: 1rem;
-            }
-
-            .item-card .text-muted {
-                font-size: 0.8rem;
-            }
-
-            /* Submit Button Mobile */
-            #submitBtn {
-                font-size: 1rem;
-                padding: 1rem;
-                border-radius: 10px;
-            }
-
-            .submit-section {
-                padding: 1rem;
-            }
-
-            /* Floating Button */
-            .floating-scroll-btn {
-                bottom: 5rem;
-                right: 1rem;
-                padding: 0.8rem;
-            }
-        }
-
-        @media (max-width: 576px) {
-
-            /* Header Text */
-            .display-5 {
-                font-size: 2rem;
-            }
-
-            /* Item Cards */
-            .selected-items h4 {
-                font-size: 1rem;
-            }
-
-            /* Input Group Fix */
-            .input-group-text {
-                padding: 0.75rem;
-            }
-        }
-
-        /* Mobile Specific Tweaks */
-        @media (hover: none) {
-            .suggestion-item:hover {
-                background-color: initial;
-                transform: none;
-            }
-
-            button:active {
-                transform: scale(0.98);
-            }
-        }
+       
     </style>
 </head>
 
@@ -268,7 +177,7 @@
 
             <div class="position-relative">
 
-                <input type="text" class="form-control form-control-lg border-start-0 pe-4" id="searchInput"
+                <input type="text" class="form-control form-control-lg border-start-3 pe-4" id="searchInput"
                     placeholder="Ketik pencarian...">
             </div>
             <div class="suggestion-box" id="suggestions"></div>
@@ -280,13 +189,13 @@
 
         <!-- Selected Items -->
         <section class="selected-items animate-in" id="selectedItemsSection" style="display: none;">
-            <div class="d-flex justify-content-between align-items-center mb-4 g-5">
+            <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4 class="fw-bold" style="color: var(--text)">
                     <i class="bi bi-clipboard-check"></i> Data Sementara
                 </h4>
                 <span class="badge rounded-pill" style="background: var(--primary)">0 Items</span>
             </div>
-            <div id="selectedItems" class="row g-4"></div>
+            <div id="selectedItems" class="row g-2 p-4 mb-2"></div>
         </section>
 
         <div class="submit-section animate-in" id="submitSection" style="display: none;">
@@ -368,7 +277,7 @@
             suggestionsBox.innerHTML = '';
             suggestionsBox.style.display = 'block';
 
-            items.slice(0, 5).forEach(item => {
+            items.slice(0, 10).forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'suggestion-item';
                 div.innerHTML = `
