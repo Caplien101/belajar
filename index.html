@@ -77,223 +77,221 @@
     </div>
 
     <script>
-
-        
         // Konfigurasi
         const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyQ2AyV5egQjIw1tdFSHfJ-FqVM-FOvBW-jLvTub3ODuHCiw_BRW0HvI1AVEwe8gzcCwg/exec';
-        const SUBMIT_URL = 'https://script.google.com/macros/s/AKfycbyQ2AyV5egQjIw1tdFSHfJ-FqVM-FOvBW-jLvTub3ODuHCiw_BRW0HvI1AVEwe8gzcCwg/exec';
+        const SUBMIT_URL = SHEET_URL;
         let allItems = [];
-
-    // ==================== HELPER FUNCTIONS ====================
-    function escapeHtml(unsafe) {
-        if (typeof unsafe !== 'string') {
-            unsafe = String(unsafe || '');
+    
+        // ==================== HELPER FUNCTIONS ====================
+        function escapeHtml(unsafe) {
+            if (typeof unsafe !== 'string') {
+                unsafe = String(unsafe || '');
+            }
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
-        return unsafe
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-
-    // ==================== CORE FUNCTIONS ====================
-    function selectItem(item) {
-        try {
-            document.getElementById('suggestions').style.display = 'none';
-            const editSection = document.getElementById('editSection');
-            
-            const editCard = `
-                <div class="col-md-8">
-                    <div class="card card-edit">
+    
+        // ==================== CORE FUNCTIONS ====================
+        function selectItem(item) {
+            try {
+                document.getElementById('suggestions').style.display = 'none';
+                const editSection = document.getElementById('editSection');
+    
+                const editCard = `
+                    <div class="col-md-8">
+                        <div class="card card-edit">
+                            <div class="card-body">
+                                <h5 class="card-title">${escapeHtml(item.description)}</h5>
+                                <p class="card-text">
+                                    PLU: ${escapeHtml(item.plu)}<br>
+                                    Barcode: ${escapeHtml(item.barcode)}<br>
+                                    Rak: ${escapeHtml(item.rak)}
+                                </p>
+                                <div class="input-group">
+                                    <input type="number" id="qtyInput" class="form-control" placeholder="Masukkan Qty" min="1" value="1">
+                                    <button class="btn btn-primary" onclick="saveItem(this)" data-item='${JSON.stringify(item)}'>
+                                        Simpan
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+    
+                editSection.innerHTML = editCard;
+                editSection.style.display = 'block';
+            } catch (error) {
+                console.error('Error in selectItem:', error);
+                alert('Terjadi kesalahan: ' + error.message);
+            }
+        }
+    
+        function saveItem(button) {
+            try {
+                const item = JSON.parse(button.dataset.item);
+                const qty = parseInt(document.getElementById('qtyInput').value) || 1;
+                if (qty < 1) {
+                    alert('Qty harus lebih dari 0');
+                    return;
+                }
+    
+                const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
+                item.qty = qty;
+                item.timestamp = new Date().toISOString();
+                transactions.push(item);
+                localStorage.setItem('transactions', JSON.stringify(transactions));
+    
+                updateSelectedItems();
+                document.getElementById('editSection').innerHTML = '';
+            } catch (error) {
+                console.error('Error in saveItem:', error);
+            }
+        }
+    
+        function deleteItem(index) {
+            let transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
+            transactions.splice(index, 1);
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+            updateSelectedItems();
+        }
+    
+        function showSuggestions(items) {
+            const suggestionsBox = document.getElementById('suggestions');
+            suggestionsBox.innerHTML = '';
+            suggestionsBox.style.display = 'block';
+    
+            items.slice(0, 5).forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.innerHTML = `
+                    <div>${escapeHtml(item.description)}</div>
+                    <small class="text-muted">
+                        PLU: ${escapeHtml(item.plu)} | 
+                        Barcode: ${escapeHtml(item.barcode)} | 
+                        Rak: ${escapeHtml(item.rak)}
+                    </small>
+                `;
+                div.addEventListener('click', () => selectItem(item));
+                suggestionsBox.appendChild(div);
+            });
+        }
+    
+        function setupSearch() {
+            const searchInput = document.getElementById('searchInput');
+            searchInput.addEventListener('input', function(e) {
+                const query = e.target.value.toLowerCase().trim();
+                const filtered = allItems.filter(item =>
+                    (item.plu?.toLowerCase().includes(query) || 
+                    item.barcode?.toLowerCase().includes(query) || 
+                    item.description?.toLowerCase().includes(query))
+                );
+                showSuggestions(filtered);
+            });
+        }
+    
+        function updateSelectedItems() {
+            try {
+                const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
+                const itemsContainer = document.getElementById('selectedItems');
+                itemsContainer.innerHTML = transactions.map((t, i) => `
+                    <div class="col-md-5 card mb-3 shadow-sm">
                         <div class="card-body">
-                            <h5 class="card-title">${escapeHtml(item.description)}</h5>
-                            <p class="card-text">
-                                PLU: ${escapeHtml(item.plu)}<br>
-                                Barcode: ${escapeHtml(item.barcode)}<br>
-                                Rak: ${escapeHtml(item.rak)}
-                            </p>
-                            <div class="input-group">
-                                <input type="number" 
-                                    id="qtyInput" 
-                                    class="form-control" 
-                                    placeholder="Masukkan Qty"
-                                    min="1"
-                                    value="1">
-                                <button class="btn btn-primary" 
-                                    onclick="saveItem(${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                                    Simpan
+                            <div class="d-flex justify-content-between">
+                                <h5 class="card-title">${escapeHtml(t.description)}</h5>
+                                <button class="btn btn-sm btn-danger" onclick="deleteItem(${i})">
+                                    <i class="bi bi-trash"></i>
                                 </button>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            editSection.innerHTML = editCard;
-            editSection.style.display = 'block';
-        } catch (error) {
-            console.error('Error in selectItem:', error);
-            alert('Terjadi kesalahan: ' + error.message);
-        }
-    }
-
-    function showSuggestions(items) {
-        const suggestionsBox = document.getElementById('suggestions');
-        suggestionsBox.innerHTML = '';
-        suggestionsBox.style.display = 'block';
-
-        items.slice(0, 5).forEach(item => {
-            const div = document.createElement('div');
-            div.className = 'suggestion-item';
-            div.innerHTML = `
-                <div>${escapeHtml(item.description)}</div>
-                <small class="text-muted">
-                    PLU: ${escapeHtml(item.plu)} | 
-                    Barcode: ${escapeHtml(item.barcode)} | 
-                    Rak: ${escapeHtml(item.rak)}
-                </small>
-            `;
-            div.addEventListener('click', () => selectItem(item));
-            suggestionsBox.appendChild(div);
-        });
-    }
-
-    function setupSearch() {
-        const searchInput = document.getElementById('searchInput');
-        const suggestionsBox = document.getElementById('suggestions');
-
-        searchInput.addEventListener('input', function(e) {
-            const query = e.target.value.toLowerCase().trim();
-            const filtered = allItems.filter(item => {
-                const plu = item.plu.toLowerCase();
-                const barcode = item.barcode.toLowerCase();
-                const desc = item.description.toLowerCase();
-                
-                return plu.includes(query) ||
-                    barcode.includes(query) ||
-                    desc.includes(query);
-            });
-            showSuggestions(filtered);
-        });
-    }
-
-    function updateSelectedItems() {
-        try {
-            const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
-            const itemsContainer = document.getElementById('selectedItems');
-            
-            itemsContainer.innerHTML = transactions.map((t, i) => `
-                <div class="col-md-5 card mb-3 shadow-sm">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <h5 class="card-title">${escapeHtml(t.description)}</h5>
-                            <button class="btn btn-sm btn-danger" 
-                                    onclick="deleteItem(${i})">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
-                        <div class="row">
-                            <div class="col-6">
-                                <small class="text-muted">
-                                    PLU: ${escapeHtml(String(t.plu))}<br>
-                                    Barcode: ${escapeHtml(String(t.barcode))}
-                                </small>
-                            </div>
-                            <div class="col-6">
-                                <p class="card-text">
-                                    Qty: <strong>${escapeHtml(String(t.qty))}</strong><br>
-                                    <small>${new Date(t.timestamp).toLocaleString()}</small>
-                                </p>
+                            <div class="row">
+                                <div class="col-6">
+                                    <small class="text-muted">
+                                        PLU: ${escapeHtml(String(t.plu))}<br>
+                                        Barcode: ${escapeHtml(String(t.barcode))}
+                                    </small>
+                                </div>
+                                <div class="col-6">
+                                    <p class="card-text">
+                                        Qty: <strong>${escapeHtml(String(t.qty))}</strong><br>
+                                        <small>${new Date(t.timestamp).toLocaleString()}</small>
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            `).join('');
-        } catch (error) {
-            console.error('Error updating items:', error);
-        }
-    }
-
-    // ==================== EVENT HANDLERS ====================
-  window.submitData = async function() {
-  try {
-    const transactions = JSON.parse(localStorage.getItem('transactions') || [];
-    if(transactions.length === 0) {
-      alert('Tidak ada data untuk dikirim');
-      return;
-    }
-
-    const response = await fetch(SUBMIT_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8', // Google Apps Script membutuhkan ini
-      },
-      body: JSON.stringify(transactions)
-    });
-
-    // Handle response text karena GAS return text bukan JSON
-    const resultText = await response.text();
-    let result;
-    
-    try {
-      result = JSON.parse(resultText);
-    } catch {
-      throw new Error(resultText || 'Unknown error');
-    }
-
-    if(result.status === "success") {
-      localStorage.removeItem('transactions');
-      updateSelectedItems();
-      document.getElementById('submitBtn').style.display = 'none';
-      alert('Data berhasil dikirim!');
-    } else {
-      throw new Error(result.message || 'Gagal mengirim data');
-    }
-    
-  } catch (error) {
-    console.error('Submit error:', error);
-    alert('Terjadi kesalahan: ' + error.message);
-    
-    // Log detail error untuk debugging
-    console.log('Transactions data:', JSON.parse(localStorage.getItem('transactions')));
-  }
-}
-    // ==================== INITIALIZATION ====================
-    window.addEventListener('DOMContentLoaded', async () => {
-        try {
-            const savedData = localStorage.getItem('inventoryData');
-            
-            if(!savedData) {
-                const response = await fetch(SHEET_URL);
-                if(!response.ok) throw new Error('Gagal mengambil data');
-                const data = await response.json();
-                
-                allItems = data.slice(1).map(row => ({
-                    rak: String(row[0] || ''),
-                    plu: String(row[1] || ''),
-                    barcode: String(row[2] || ''),
-                    description: String(row[3] || '')
-                }));
-                
-                localStorage.setItem('inventoryData', JSON.stringify(allItems));
-            } else {
-                allItems = JSON.parse(savedData);
+                `).join('');
+            } catch (error) {
+                console.error('Error updating items:', error);
             }
-
-            document.getElementById('spinner').style.display = 'none';
-            document.getElementById('main-content').style.display = 'block';
-            setupSearch();
-        } catch (error) {
-            console.error('Error loading data:', error);
-            alert('Gagal memuat data! ' + error.message);
-            document.getElementById('spinner').style.display = 'none';
         }
-    });
-
-    // ==================== GLOBAL SCOPE ASSIGNMENT ====================
-    window.selectItem = selectItem;
-</script>
+    
+        window.submitData = async function() {
+            try {
+                const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
+                if (transactions.length === 0) {
+                    alert('Tidak ada data untuk dikirim');
+                    return;
+                }
+    
+                const response = await fetch(SUBMIT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(transactions)
+                });
+    
+                const result = await response.json();
+                if (result.status === "success") {
+                    localStorage.removeItem('transactions');
+                    updateSelectedItems();
+                    document.getElementById('submitBtn').style.display = 'none';
+                    alert('Data berhasil dikirim!');
+                } else {
+                    throw new Error(result.message || 'Gagal mengirim data');
+                }
+            } catch (error) {
+                console.error('Submit error:', error);
+                alert('Terjadi kesalahan: ' + error.message);
+            }
+        };
+    
+        // ==================== INITIALIZATION ====================
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const savedData = localStorage.getItem('inventoryData');
+    
+                if (!savedData) {
+                    const response = await fetch(SHEET_URL);
+                    if (!response.ok) throw new Error('Gagal mengambil data');
+                    const data = await response.json();
+    
+                    allItems = data.slice(1).map(row => ({
+                        rak: String(row[0] || ''),
+                        plu: String(row[1] || ''),
+                        barcode: String(row[2] || ''),
+                        description: String(row[3] || '')
+                    }));
+    
+                    localStorage.setItem('inventoryData', JSON.stringify(allItems));
+                } else {
+                    allItems = JSON.parse(savedData);
+                }
+    
+                document.getElementById('spinner').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+                setupSearch();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                alert('Gagal memuat data! ' + error.message);
+                document.getElementById('spinner').style.display = 'none';
+            }
+        });
+    
+        window.selectItem = selectItem;
+    </script>
+    
     
 </body>
 </html>
