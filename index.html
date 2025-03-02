@@ -216,84 +216,49 @@
     }
 
     // ==================== EVENT HANDLERS ====================
-    window.saveItem = function(item) {
-        try {
-            const qty = document.getElementById('qtyInput').value;
-            if(!qty || qty < 1) {
-                alert('Masukkan jumlah yang valid');
-                return;
-            }
-
-            const transaction = {
-                ...item,
-                qty: parseInt(qty),
-                timestamp: new Date().toISOString()
-            };
-
-            const existing = JSON.parse(localStorage.getItem('transactions') || '[]');
-            existing.push(transaction);
-            localStorage.setItem('transactions', JSON.stringify(existing));
-
-            document.getElementById('selectedItemsSection').style.display = 'block';
-            updateSelectedItems();
-            document.getElementById('editSection').style.display = 'none';
-            document.getElementById('submitBtn').style.display = 'block';
-        } catch (error) {
-            console.error('Error saving item:', error);
-            alert('Gagal menyimpan data!');
-        }
+  window.submitData = async function() {
+  try {
+    const transactions = JSON.parse(localStorage.getItem('transactions') || [];
+    if(transactions.length === 0) {
+      alert('Tidak ada data untuk dikirim');
+      return;
     }
 
-    window.deleteItem = function(index) {
-        const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
-        transactions.splice(index, 1);
-        localStorage.setItem('transactions', JSON.stringify(transactions));
-        
-        if(transactions.length === 0) {
-            document.getElementById('selectedItemsSection').style.display = 'none';
-            document.getElementById('submitBtn').style.display = 'none';
-        }
-        
-        updateSelectedItems();
-    }
-
-    window.submitData = async function() {
-        try {
-            const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
-            if(transactions.length === 0) {
-                alert('Tidak ada data untuk dikirim');
-                return;
-            }
-
-            const response = await fetch(SUBMIT_URL, {
+    const response = await fetch(SUBMIT_URL, {
       method: 'POST',
-      mode: 'no-cors',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'text/plain; charset=utf-8', // Google Apps Script membutuhkan ini
       },
       body: JSON.stringify(transactions)
     });
 
-    // Handle response
-    if(response.status === 200) {
-      const result = await response.json();
-      if(result.status === "success") {
-        alert('Data berhasil dikirim!');
-        localStorage.removeItem('transactions');
-        updateSelectedItems();
-        document.getElementById('submitBtn').style.display = 'none';
-      } else {
-        throw new Error(result.message);
-      }
-    } else {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    // Handle response text karena GAS return text bukan JSON
+    const resultText = await response.text();
+    let result;
+    
+    try {
+      result = JSON.parse(resultText);
+    } catch {
+      throw new Error(resultText || 'Unknown error');
     }
+
+    if(result.status === "success") {
+      localStorage.removeItem('transactions');
+      updateSelectedItems();
+      document.getElementById('submitBtn').style.display = 'none';
+      alert('Data berhasil dikirim!');
+    } else {
+      throw new Error(result.message || 'Gagal mengirim data');
+    }
+    
   } catch (error) {
     console.error('Submit error:', error);
-    alert('Gagal mengirim data: ' + error.message);
+    alert('Terjadi kesalahan: ' + error.message);
+    
+    // Log detail error untuk debugging
+    console.log('Transactions data:', JSON.parse(localStorage.getItem('transactions')));
   }
 }
-
     // ==================== INITIALIZATION ====================
     window.addEventListener('DOMContentLoaded', async () => {
         try {
