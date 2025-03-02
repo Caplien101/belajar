@@ -266,26 +266,33 @@
             }
 
             const response = await fetch(SUBMIT_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(transactions)
-            });
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(transactions)
+    });
 
-            if(response.ok) {
-                localStorage.removeItem('transactions');
-                updateSelectedItems();
-                document.getElementById('submitBtn').style.display = 'none';
-                alert('Data berhasil dikirim!');
-            } else {
-                throw new Error('Gagal mengirim data');
-            }
-        } catch (error) {
-            console.error('Submit error:', error);
-            alert('Gagal mengirim data! ' + error.message);
-        }
+    // Handle response
+    if(response.status === 200) {
+      const result = await response.json();
+      if(result.status === "success") {
+        alert('Data berhasil dikirim!');
+        localStorage.removeItem('transactions');
+        updateSelectedItems();
+        document.getElementById('submitBtn').style.display = 'none';
+      } else {
+        throw new Error(result.message);
+      }
+    } else {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+  } catch (error) {
+    console.error('Submit error:', error);
+    alert('Gagal mengirim data: ' + error.message);
+  }
+}
 
     // ==================== INITIALIZATION ====================
     window.addEventListener('DOMContentLoaded', async () => {
